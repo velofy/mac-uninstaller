@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <rect width="1024" height="1024" rx="230" ry="230" fill="#1c1c1e"/>
+  <g fill="#ffffff">
+    <!-- handle -->
+    <rect x="440" y="300" width="144" height="60" rx="26"/>
+    <!-- lid -->
+    <rect x="300" y="372" width="424" height="66" rx="26"/>
+    <!-- body: tapered can with rounded bottom -->
+    <path d="M334 470
+             h356
+             l-30 258
+             a44 44 0 0 1 -43.7 39 H407.7
+             a44 44 0 0 1 -43.7 -39
+             Z"/>
+    <!-- three slots, cut from the body -->
+    <g fill="#1c1c1e">
+      <rect x="424" y="512" width="30" height="176" rx="15"/>
+      <rect x="497" y="512" width="30" height="176" rx="15"/>
+      <rect x="570" y="512" width="30" height="176" rx="15"/>
+    </g>
+  </g>
+</svg>

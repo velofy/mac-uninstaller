@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Uninstaller — remove a Mac app and everything it leaves behind</title>
+  <meta name="description" content="A fast, native macOS app that removes an application and all of its leftover files, plus a Cleanup panel that reclaims space. Everything goes to the Trash. Open source, MIT.">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="preload" href="assets/fonts/space-grotesk-700.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/space-grotesk-400.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/space-mono-400.woff2" as="font" type="font/woff2" crossorigin>
+  <style>
+    /* Space Grotesk + Space Mono, SIL OFL 1.1 (see assets/fonts/OFL-*.txt) */
+    @font-face { font-family:"Space Grotesk"; font-weight:400; font-display:swap; src:url("assets/fonts/space-grotesk-400.woff2") format("woff2"); }
+    @font-face { font-family:"Space Grotesk"; font-weight:500; font-display:swap; src:url("assets/fonts/space-grotesk-500.woff2") format("woff2"); }
+    @font-face { font-family:"Space Grotesk"; font-weight:700; font-display:swap; src:url("assets/fonts/space-grotesk-700.woff2") format("woff2"); }
+    @font-face { font-family:"Space Mono"; font-weight:400; font-display:swap; src:url("assets/fonts/space-mono-400.woff2") format("woff2"); }
+
+    :root {
+      --sans:"Space Grotesk","Helvetica Neue",Helvetica,Arial,sans-serif;
+      --mono:"Space Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+      --bg:#000000;
+      --panel:#0d0d0f;
+      --panel-2:#141416;
+      --fg:#f4f4f5;
+      --muted:#8a8a8f;
+      --faint:#5f5f65;
+      --line:#232326;
+      --line-2:#2e2e32;
+      --red:#ff453a;
+      --amber:#ff9f0a;
+    }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    html { -webkit-text-size-adjust:100%; scroll-behavior:smooth; }
+    body {
+      background:var(--bg); color:var(--fg);
+      font-family:var(--sans); line-height:1.6;
+      -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+      overflow-x:hidden;
+    }
+    a { color:inherit; }
+    .wrap { max-width:940px; margin:0 auto; padding:0 24px; }
+
+    /* ---- hero ---- */
+    header { padding:clamp(3.5rem,10vh,6rem) 0 2rem; }
+    .eyebrow {
+      font-family:var(--mono); font-size:0.7rem; letter-spacing:0.26em;
+      text-transform:uppercase; color:var(--muted);
+    }
+    .brand-row { display:flex; align-items:center; gap:0.9rem; margin-top:1.3rem; }
+    .mark {
+      width:clamp(2.6rem,7vw,3.2rem); height:clamp(2.6rem,7vw,3.2rem);
+      flex:0 0 auto; border-radius:26%;
+    }
+    .brand {
+      font-weight:700; font-size:clamp(2.6rem,8vw,4.2rem);
+      letter-spacing:-0.02em; line-height:0.95;
+    }
+    .tagline {
+      color:var(--muted); margin-top:1.4rem; font-size:clamp(1.02rem,2.5vw,1.2rem);
+      max-width:34ch; text-wrap:balance;
+    }
+    .cta { display:flex; align-items:center; gap:1.25rem; flex-wrap:wrap; margin-top:2rem; }
+    .btn {
+      display:inline-block; padding:0.8rem 1.7rem; background:var(--fg); color:var(--bg);
+      text-decoration:none; font-weight:500; letter-spacing:0.01em;
+      border:1px solid var(--fg); border-radius:2px; transition:background .15s,color .15s;
+    }
+    .btn:hover, .btn:focus-visible { background:transparent; color:var(--fg); }
+    .cta a.plain {
+      font-family:var(--mono); font-size:0.8rem; letter-spacing:0.04em;
+      color:var(--muted); text-decoration:none;
+    }
+    .cta a.plain:hover, .cta a.plain:focus-visible { color:var(--fg); }
+
+    /* ---- window replica (the signature) ---- */
+    .stage { padding:2.5rem 0 1rem; }
+    .u-win {
+      background:var(--panel); border:1px solid var(--line-2); border-radius:12px;
+      overflow:hidden; box-shadow:0 24px 60px -30px #000, 0 2px 0 #ffffff08 inset;
+      max-width:100%;
+    }
+    .u-titlebar {
+      display:flex; align-items:center; gap:8px; padding:11px 14px;
+      border-bottom:1px solid var(--line); background:var(--panel-2);
+    }
+    .u-dot { width:11px; height:11px; border-radius:50%; background:#2f2f33; }
+    .u-appbar { display:flex; align-items:center; gap:10px; padding:13px 16px; border-bottom:1px solid var(--line); }
+    .u-tile { width:26px; height:26px; border-radius:7px; flex:0 0 auto; }
+    .u-title { font-weight:600; font-size:0.95rem; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .u-seg {
+      margin-left:auto; display:flex; font-family:var(--mono); font-size:0.62rem;
+      letter-spacing:0.1em; text-transform:uppercase; border:1px solid var(--line-2);
+      border-radius:6px; overflow:hidden;
+    }
+    .u-seg span { padding:5px 12px; color:var(--muted); }
+    .u-seg .on { background:var(--fg); color:#000; }
+
+    .u-body { display:grid; grid-template-columns:44% 56%; min-height:322px; }
+    .u-list { border-right:1px solid var(--line); padding:8px; }
+    .u-app {
+      display:flex; align-items:center; gap:10px; padding:8px 9px; border-radius:7px;
+    }
+    .u-app.sel { background:#ffffff0e; }
+    .u-ico { width:26px; height:26px; border-radius:7px; flex:0 0 auto;
+      display:grid; place-items:center; font-weight:600; font-size:0.8rem; color:#d8d8dc; background:#26262a; }
+    .u-name { font-size:0.86rem; line-height:1.25; }
+    .u-bid { font-family:var(--mono); font-size:0.6rem; color:var(--faint); }
+    .u-size { margin-left:auto; font-family:var(--mono); font-size:0.62rem; color:var(--muted); }
+
+    .u-detail { display:flex; flex-direction:column; }
+    .u-dhead { display:flex; align-items:center; gap:11px; padding:14px 16px; border-bottom:1px solid var(--line); }
+    .u-dhead .u-ico { width:38px; height:38px; border-radius:9px; font-size:1.05rem; }
+    .u-dname { font-size:1.05rem; font-weight:600; }
+    .u-dbid { font-family:var(--mono); font-size:0.62rem; color:var(--muted); }
+    .u-found { font-family:var(--mono); font-size:0.6rem; letter-spacing:0.08em; text-transform:uppercase;
+      color:var(--faint); padding:9px 16px 3px; }
+    .u-items { padding:0 10px 6px; flex:1; }
+    .u-item {
+      display:flex; align-items:center; gap:10px; padding:7px 8px; border-radius:6px;
+      opacity:0; transform:translateY(4px); animation:rowin .42s ease forwards;
+    }
+    .u-check {
+      width:15px; height:15px; border-radius:4px; flex:0 0 auto; border:1.5px solid var(--faint);
+      display:grid; place-items:center;
+    }
+    .u-check.ck { background:var(--fg); border-color:var(--fg); }
+    .u-check.ck::after { content:""; width:8px; height:5px; margin-top:-2px;
+      border-left:2px solid #000; border-bottom:2px solid #000; transform:rotate(-45deg); }
+    .u-il { min-width:0; }
+    .u-ipath { font-size:0.78rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .u-inote { font-size:0.62rem; color:var(--amber); }
+    .u-isize { margin-left:auto; font-family:var(--mono); font-size:0.62rem; color:var(--muted); flex:0 0 auto; }
+
+    .u-actionbar {
+      display:flex; align-items:center; gap:12px; padding:11px 16px;
+      border-top:1px solid var(--line); background:var(--panel-2);
+    }
+    .u-sel { display:flex; flex-direction:column; line-height:1.25; }
+    .u-selc { font-size:0.78rem; font-weight:500; }
+    .u-selb { font-family:var(--mono); font-size:0.66rem; color:var(--muted); }
+    .u-go {
+      margin-left:auto; background:var(--red); color:#fff; border:none; border-radius:5px;
+      font-family:var(--sans); font-size:0.82rem; font-weight:500; padding:0.5rem 1.1rem;
+    }
+
+    /* ---- content sections ---- */
+    section { padding:2.75rem 0; border-top:1px solid var(--line); }
+    .slabel {
+      font-family:var(--mono); font-size:0.68rem; letter-spacing:0.18em; text-transform:uppercase;
+      color:var(--muted); margin-bottom:1.5rem;
+    }
+    .rows { display:grid; gap:0; }
+    .row {
+      display:grid; grid-template-columns:9rem 1fr; gap:1.2rem; padding:1.1rem 0;
+      border-bottom:1px solid var(--line);
+    }
+    .row:last-child { border-bottom:none; }
+    .row dt { font-family:var(--mono); font-size:0.7rem; letter-spacing:0.12em; text-transform:uppercase;
+      color:var(--fg); padding-top:0.15rem; }
+    .row dd { color:var(--muted); font-size:1rem; }
+    @media (max-width:560px) {
+      .row { grid-template-columns:1fr; gap:0.35rem; }
+    }
+
+    .code {
+      font-family:var(--mono); font-size:0.82rem; line-height:1.9; color:var(--fg);
+      background:var(--panel); border:1px solid var(--line-2); border-radius:8px;
+      padding:1.1rem 1.3rem; overflow-x:auto; white-space:pre;
+    }
+    .code .p { color:var(--faint); }
+    .note { color:var(--faint); font-family:var(--mono); font-size:0.72rem; margin-top:0.9rem; }
+
+    footer {
+      padding:2.5rem 0 3.5rem; border-top:1px solid var(--line);
+      font-family:var(--mono); font-size:0.72rem; line-height:1.9; color:var(--muted);
+    }
+    footer a { color:var(--muted); text-underline-offset:3px; }
+    footer a:hover { color:var(--fg); }
+
+    @keyframes rowin { to { opacity:1; transform:none; } }
+
+    :focus-visible { outline:2px solid var(--fg); outline-offset:3px; border-radius:2px; }
+
+    @media (max-width:600px) {
+      /* On phones, drop the app-list column and show only the detail pane,
+         which carries the story: an app and every file it left behind. */
+      .u-body { grid-template-columns:1fr; min-height:0; }
+      .u-list { display:none; }
+      .u-appbar { padding:11px 12px; }
+      .u-seg { font-size:0.55rem; }
+      .u-seg span { padding:5px 9px; }
+      .u-dhead { padding:12px; }
+      .u-items { padding:0 8px 6px; }
+      .u-item { gap:8px; padding:7px 5px; }
+      .u-ipath { font-size:0.74rem; }
+      .u-isize { font-size:0.58rem; }
+      .u-actionbar { padding:10px 12px; }
+      .u-go { font-size:0.76rem; padding:0.45rem 0.9rem; }
+    }
+    @media (prefers-reduced-motion:reduce) {
+      html { scroll-behavior:auto; }
+      * { transition:none !important; }
+      .u-item { opacity:1; transform:none; animation:none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <header>
+      <p class="eyebrow">Native macOS utility</p>
+      <div class="brand-row">
+        <svg class="mark" viewBox="0 0 1024 1024" aria-hidden="true">
+          <rect width="1024" height="1024" rx="230" fill="#1c1c1e"/>
+          <g fill="#fff">
+            <rect x="440" y="300" width="144" height="60" rx="26"/>
+            <rect x="300" y="372" width="424" height="66" rx="26"/>
+            <path d="M334 470h356l-30 258a44 44 0 0 1-43.7 39H407.7a44 44 0 0 1-43.7-39Z"/>
+            <g fill="#1c1c1e">
+              <rect x="424" y="512" width="30" height="176" rx="15"/>
+              <rect x="497" y="512" width="30" height="176" rx="15"/>
+              <rect x="570" y="512" width="30" height="176" rx="15"/>
+            </g>
+          </g>
+        </svg>
+        <h1 class="brand">Uninstaller</h1>
+      </div>
+      <p class="tagline">Remove a Mac app and everything it leaves behind, then clean up after the apps you already deleted.</p>
+      <div class="cta">
+        <a class="btn" href="https://github.com/anishfyi/mac-uninstaller">View on GitHub</a>
+        <a class="plain" href="#install">Build &amp; install ↓</a>
+      </div>
+    </header>
+
+    <!-- signature: a faithful, self-contained replica of the app doing its job -->
+    <div class="stage">
+      <div class="u-win" role="img" aria-label="The Uninstaller window: the app Spotify selected, with its leftover files found across the Library and a button to move 205 megabytes to the Trash.">
+        <div class="u-titlebar"><span class="u-dot"></span><span class="u-dot"></span><span class="u-dot"></span></div>
+        <div class="u-appbar">
+          <svg class="u-tile" viewBox="0 0 1024 1024" aria-hidden="true">
+            <rect width="1024" height="1024" rx="230" fill="#1c1c1e"/>
+            <g fill="#fff">
+              <rect x="440" y="300" width="144" height="60" rx="26"/>
+              <rect x="300" y="372" width="424" height="66" rx="26"/>
+              <path d="M334 470h356l-30 258a44 44 0 0 1-43.7 39H407.7a44 44 0 0 1-43.7-39Z"/>
+              <g fill="#1c1c1e"><rect x="424" y="512" width="30" height="176" rx="15"/><rect x="497" y="512" width="30" height="176" rx="15"/><rect x="570" y="512" width="30" height="176" rx="15"/></g>
+            </g>
+          </svg>
+          <span class="u-title">Uninstaller</span>
+          <span class="u-seg"><span class="on">Apps</span><span>Cleanup</span></span>
+        </div>
+        <div class="u-body">
+          <div class="u-list">
+            <div class="u-app sel">
+              <span class="u-ico">S</span>
+              <span><span class="u-name">Spotify</span><br><span class="u-bid">com.spotify.client</span></span>
+              <span class="u-size">412 MB</span>
+            </div>
+            <div class="u-app">
+              <span class="u-ico">Z</span>
+              <span><span class="u-name">Zoom</span><br><span class="u-bid">us.zoom.xos</span></span>
+              <span class="u-size">180 MB</span>
+            </div>
+            <div class="u-app">
+              <span class="u-ico">F</span>
+              <span><span class="u-name">Figma</span><br><span class="u-bid">com.figma.Desktop</span></span>
+              <span class="u-size">96 MB</span>
+            </div>
+            <div class="u-app">
+              <span class="u-ico">V</span>
+              <span><span class="u-name">VLC</span><br><span class="u-bid">org.videolan.vlc</span></span>
+              <span class="u-size">64 MB</span>
+            </div>
+          </div>
+          <div class="u-detail">
+            <div class="u-dhead">
+              <span class="u-ico">S</span>
+              <span><span class="u-dname">Spotify</span><br><span class="u-dbid">com.spotify.client</span></span>
+            </div>
+            <div class="u-found">5 items found</div>
+            <div class="u-items">
+              <div class="u-item" style="animation-delay:.05s">
+                <span class="u-check ck"></span>
+                <span class="u-il"><span class="u-ipath">Spotify.app</span></span>
+                <span class="u-isize">412 MB</span>
+              </div>
+              <div class="u-item" style="animation-delay:.14s">
+                <span class="u-check ck"></span>
+                <span class="u-il"><span class="u-ipath">Application Support/com.spotify.client</span></span>
+                <span class="u-isize">180 MB</span>
+              </div>
+              <div class="u-item" style="animation-delay:.23s">
+                <span class="u-check ck"></span>
+                <span class="u-il"><span class="u-ipath">Caches/com.spotify.client</span></span>
+                <span class="u-isize">22 MB</span>
+              </div>
+              <div class="u-item" style="animation-delay:.32s">
+                <span class="u-check ck"></span>
+                <span class="u-il"><span class="u-ipath">Preferences/com.spotify.client.plist</span></span>
+                <span class="u-isize">12 KB</span>
+              </div>
+              <div class="u-item" style="animation-delay:.41s">
+                <span class="u-check"></span>
+                <span class="u-il"><span class="u-ipath">Application Support/Spotify</span><br><span class="u-inote">name match, verify before removing</span></span>
+                <span class="u-isize">41 MB</span>
+              </div>
+            </div>
+            <div class="u-actionbar">
+              <span class="u-sel"><span class="u-selc">4 selected</span><span class="u-selb"><span id="reclaim">614</span> MB</span></span>
+              <button class="u-go" type="button" tabindex="-1" aria-hidden="true">Move to Trash</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <section>
+      <p class="slabel">Two things it does</p>
+      <dl class="rows">
+        <div class="row">
+          <dt>Apps</dt>
+          <dd>Pick an app or drop it in. Uninstaller finds the bundle plus every support file, cache, and preference it scattered across your Library, and moves the lot to the Trash.</dd>
+        </div>
+        <div class="row">
+          <dt>Cleanup</dt>
+          <dd>Scan for space you can get back: leftovers from apps that are already gone, regenerable caches, and old logs and crash reports.</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section>
+      <p class="slabel">Safe by default</p>
+      <dl class="rows">
+        <div class="row">
+          <dt>Trash only</dt>
+          <dd>Nothing is erased. Everything moves to the Trash, recoverable until you empty it.</dd>
+        </div>
+        <div class="row">
+          <dt>Precise</dt>
+          <dd>Files are matched by exact bundle id, never a loose substring, so a lookalike app is never swept up. Folders merely named after an app are shown but left unchecked for you to confirm.</dd>
+        </div>
+        <div class="row">
+          <dt>Hands off</dt>
+          <dd>Apple's own apps and shared system identifiers are never offered for removal.</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section id="install">
+      <p class="slabel">Build &amp; install</p>
+      <div class="code"><span class="p">$</span> git clone https://github.com/anishfyi/mac-uninstaller
+<span class="p">$</span> cd mac-uninstaller
+<span class="p">$</span> Scripts/make-app.sh --install</div>
+      <p class="note">Needs the Swift toolchain (Xcode or Command Line Tools). No Xcode project. Runs on Apple silicon, macOS 14 and later.</p>
+    </section>
+
+    <footer>
+      <p>MIT licensed. <a href="https://github.com/anishfyi/mac-uninstaller">Source on GitHub</a>. Not affiliated with Apple.</p>
+      <p>Uninstaller moves files to the Trash; review the list before you confirm.</p>
+    </footer>
+
+  </div>
+
+  <script>
+    // Count the reclaim total up as the item rows reveal. Skipped under reduced motion.
+    (function () {
+      var mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+      var el = document.getElementById('reclaim');
+      if (!el || mq.matches) return;
+      var target = 614, start = null, dur = 900;
+      el.textContent = '0';
+      function step(t) {
+        if (start === null) start = t;
+        var k = Math.min((t - start) / dur, 1);
+        el.textContent = Math.round((1 - Math.pow(1 - k, 3)) * target);
+        if (k < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    })();
+  </script>
+</body>
+</html>
