@@ -43,7 +43,9 @@ public struct CleanupScanner: Sendable {
                     url: child,
                     label: "\(area)/\(entry)",
                     category: area,
-                    confidence: .bundleID       // clearly junk -> pre-selected
+                    confidence: .bundleID,      // clearly junk -> pre-selected
+                    risk: .easy,
+                    riskReason: "Leftover from an app that is no longer installed; nothing uses it anymore."
                 ))
             }
         }
@@ -63,7 +65,9 @@ public struct CleanupScanner: Sendable {
                     url: child,
                     label: "\(area)/\(entry)",
                     category: area,
-                    confidence: .name           // broad -> review before deleting
+                    confidence: .name,          // broad -> unchecked by default
+                    risk: .easy,
+                    riskReason: "Regenerable: apps rebuild their caches on next launch."
                 ))
             }
         }
@@ -83,7 +87,9 @@ public struct CleanupScanner: Sendable {
                     url: child,
                     label: "\(area)/\(entry)",
                     category: area,
-                    confidence: .name
+                    confidence: .name,
+                    risk: .easy,
+                    riskReason: "Diagnostic logs and crash reports; only useful when debugging a problem."
                 ))
             }
         }

@@ -27,7 +27,9 @@ public struct LeftoverFinder: Sendable {
                 url: appURL,
                 label: appURL.lastPathComponent,
                 category: "Application",
-                confidence: .bundleID
+                confidence: .bundleID,
+                risk: .easy,
+                riskReason: "The app itself; reinstall from its original source to get it back."
             ))
         }
 
@@ -53,7 +55,9 @@ public struct LeftoverFinder: Sendable {
                         url: child,
                         label: "\(area.category)/\(entry)",
                         category: area.category,
-                        confidence: .bundleID
+                        confidence: .bundleID,
+                        risk: .easy,
+                        riskReason: "Belongs to this app only, identified by its exact bundle id."
                     ))
                     continue
                 }
@@ -67,7 +71,9 @@ public struct LeftoverFinder: Sendable {
                         url: child,
                         label: "\(area.category)/\(entry)",
                         category: area.category,
-                        confidence: .name
+                        confidence: .name,
+                        risk: .review,
+                        riskReason: "Matches the app by name only; verify it is not another product's folder."
                     ))
                 }
             }
