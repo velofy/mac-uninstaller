@@ -20,9 +20,16 @@ public struct RemovableItem: Identifiable, Sendable, Equatable {
     /// `.app` bundle itself.
     public let category: String
     public let confidence: MatchConfidence
+    /// How risky removing this item is: badge color, default selection, and the
+    /// pre-removal alert all key off this.
+    public let risk: RiskLevel
+    /// One-line human explanation of the risk (e.g. "Regenerable by Xcode").
+    public let riskReason: String
     /// On-disk allocated size in bytes. `nil` until computed.
     public var sizeBytes: Int64?
-    /// Whether this row is selected for removal. Defaults follow `confidence`.
+    /// Last content modification, when the scanner knows it (big-file rows).
+    public let modifiedAt: Date?
+    /// Whether this row is selected for removal.
     public var isSelected: Bool
 
     public init(
@@ -30,14 +37,26 @@ public struct RemovableItem: Identifiable, Sendable, Equatable {
         label: String,
         category: String,
         confidence: MatchConfidence,
-        sizeBytes: Int64? = nil
+        sizeBytes: Int64? = nil,
+        risk: RiskLevel? = nil,
+        riskReason: String? = nil,
+        modifiedAt: Date? = nil,
+        preselected: Bool? = nil
     ) {
         self.id = url
         self.label = label
         self.category = category
         self.confidence = confidence
+        let resolvedRisk = risk ?? RiskLevel(confidence: confidence)
+        self.risk = resolvedRisk
+        self.riskReason = riskReason ?? resolvedRisk.defaultReason
         self.sizeBytes = sizeBytes
-        self.isSelected = (confidence == .bundleID)
+        self.modifiedAt = modifiedAt
+        // Tough items are NEVER preselected, no matter what a caller asks for:
+        // reverting them can be impossible, so opt-in must be explicit and
+        // per-item. The invariant lives here, in code, not in scanner discipline.
+        let wanted = preselected ?? (confidence == .bundleID)
+        self.isSelected = wanted && resolvedRisk != .tough
     }
 }
 
