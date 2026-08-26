@@ -48,6 +48,21 @@ Scripts/make-app.sh
 Scripts/make-app.sh --install
 ```
 
+The bundle is ad-hoc signed, so a locally built app opens normally and `--install`
+clears the quarantine flag for you. If you ever hand the `.app` to someone else, their
+Mac will say *"Apple could not verify Uninstaller is free of malware"*, because the app
+is not notarized. They should click **Done** (never "Move to Bin") and use
+**System Settings → Privacy & Security → Open Anyway**, or run
+`xattr -dr com.apple.quarantine /Applications/Uninstaller.app`. Right-click → **Open**
+stopped working as a bypass in macOS 15.
+
+To sign with a real certificate instead, export it before building:
+
+```bash
+export APPLE_SIGNING_IDENTITY="Developer ID Application: Your Name (TEAMID)"
+Scripts/make-app.sh
+```
+
 ## Develop
 
 ```bash

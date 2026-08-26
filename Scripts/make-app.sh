@@ -24,9 +24,19 @@ cp "$ROOT/Resources/Info.plist" "$APP/Contents/Info.plist"
 cp "$ROOT/Resources/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
 printf 'APPL????' > "$APP/Contents/PkgInfo"
 
-echo "▸ Ad-hoc signing…"
-codesign --force --deep --sign - "$APP" >/dev/null 2>&1 || \
-  echo "  (codesign skipped; app still runs locally)"
+# Seal the bundle. An unsealed bundle (no _CodeSignature, Info.plist not bound) is what
+# makes macOS call a downloaded app "damaged", so a failure here matters and must not be
+# swallowed. Set APPLE_SIGNING_IDENTITY to a Developer ID to sign for distribution.
+SIGN_ID="${APPLE_SIGNING_IDENTITY:--}"
+if [[ "$SIGN_ID" == "-" ]]; then
+  TS_FLAG="--timestamp=none"   # a secure timestamp requires a real certificate
+else
+  TS_FLAG="--timestamp"
+fi
+
+echo "▸ Signing (identity: $SIGN_ID)…"
+codesign --force --options runtime $TS_FLAG --sign "$SIGN_ID" "$APP"
+codesign --verify --strict --verbose=1 "$APP"
 
 echo "✓ Built $APP"
 
