@@ -1,3 +1,10 @@
+<p align="center">
+  <a href="https://velofy.co/mac-uninstaller/"><picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/velofy/mac-uninstaller/main/assets/tile-dark.svg">
+    <img alt="Uninstaller" src="https://raw.githubusercontent.com/velofy/mac-uninstaller/main/assets/tile-light.svg" width="360">
+  </picture></a>
+</p>
+
 # Uninstaller
 
 A fast, native macOS app that removes an application **and all of its leftover files**, plus a **Cleanup** panel that reclaims space from orphaned support files, caches and logs. Everything it removes goes to the **Trash**. Nothing is deleted outright, so anything can be restored until you empty the Trash.
